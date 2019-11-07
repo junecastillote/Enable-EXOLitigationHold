@@ -15,7 +15,7 @@
 
 .LICENSEURI
 
-.PROJECTURI https://github.com/junecastillote/Remediate-Exchange-Online-Litigation-Hold
+.PROJECTURI https://github.com/junecastillote/Enable-EXOLitigationHold
 
 .ICONURI
 
