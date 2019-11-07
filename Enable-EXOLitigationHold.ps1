@@ -105,6 +105,10 @@ Write-Output "....................................."
 $tz = ([System.TimeZoneInfo]::Local).DisplayName.ToString().Split(" ")[0]
 $today = Get-Date -Format "MMMM dd, yyyy hh:mm tt"
 
+if (!(Test-Path $ReportDirectory)) {
+    $null = New-Item -ItemType Directory -Path $ReportDirectory -Force
+}
+
 "Last Run: $today" | Out-File ($ReportDirectory + "\Remediate-Exchange-Online-Litigation-Hold.txt")
 
 try {
@@ -267,6 +271,7 @@ else {
 
 #Reset mailboxList and get updated values.
 if (!$ListOnly) {
+    Write-Output 'Getting updated values. Please wait...'
     $mailboxList = @($mailboxList | ForEach-Object { Get-Mailbox -Identity $_.Identity })
 }
 
