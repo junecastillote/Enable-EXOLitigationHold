@@ -5,7 +5,7 @@ Function Enable-EOMLitigationHold {
     [cmdletbinding()]
     Param(
         [parameter(Mandatory)]
-        [pscredential]$Credential,    
+        [pscredential]$Credential,
 
         [parameter()]
         [switch]$SendEmail,
@@ -29,11 +29,11 @@ Function Enable-EOMLitigationHold {
 
     if ($SendEmail) {
         if (!$From) {
-            Write-Host "From address is missing."
+            Write-Output "From address is missing."
         }
 
         if (!$To) {
-            Write-Host "To address is missing."
+            Write-Output "To address is missing."
         }
     }
 
@@ -44,7 +44,7 @@ Function Enable-EOMLitigationHold {
     "Last Run: $today" | Out-File ($ReportDirectory + "\Remediate-Exchange-Online-Litigation-Hold.txt")
 
     if (!$SkipConnect) {
-        Write-Host 'Connecting to Exchange Online..'
+        Write-Output 'Connecting to Exchange Online..'
         #discard all PSSession
         Get-PSSession | Remove-PSSession -Confirm:$false
 
@@ -52,8 +52,6 @@ Function Enable-EOMLitigationHold {
         $Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $credential -Authentication Basic -AllowRedirection -WarningAction SilentlyContinue
         Import-PSSession $Session -DisableNameChecking | Out-Null
     }
-
-    
 
     $Organization = (Get-OrganizationConfig).DisplayName
     $css_string = Get-Content ($PSScriptRoot + '\style.css') -Raw
@@ -65,22 +63,22 @@ Function Enable-EOMLitigationHold {
     $fileSuffix = "{0:yyyy_MM_dd}" -f [datetime]$today
     $outputCsvFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report-$($fileSuffix).csv").Replace(" ", "_")
     $outputHTMLFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report-$($fileSuffix).html").Replace(" ", "_")
-    Write-Host 'Getting mailbox list with E3, E5 or Plan 2 License..'
+    Write-Output 'Getting mailbox list with E3, E5 or Plan 2 License..'
     $mailboxList = Get-Mailbox -ResultSize Unlimited -RecipientTypeDetails UserMailbox, SharedMailbox -Filter { LitigationHoldEnabled -eq $false }
     $mailboxList = $mailboxList | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" }
-    Write-Host "Found $($mailboxList.count) mailbox"
+    Write-Output "Found $($mailboxList.count) mailbox"
 
     if ($mailboxList.count -gt 0) {
-        Write-Host 'Writing report..'
+        Write-Output 'Writing report..'
         $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile
-    	
+
         #create the HTML report
         #html title
         $html = "<html><head><title>[$($Organization)] $($subject)</title><meta http-equiv=""Content-Type"" content=""text/html; charset=ISO-8859-1"" />"
         $html += '<style type="text/css">'
         $html += $css_string
         $html += '</style></head><body>'
-		
+
         #heading
         $html += '<table id="tbl">'
         $html += '<tr><td class="head"> </td></tr>'
@@ -90,12 +88,12 @@ Function Enable-EOMLitigationHold {
         $html += '</table>'
         $html += '<table id="tbl">'
         $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th></tr>'
-		
-        foreach ($mailbox in $mailboxList) {	
+
+        foreach ($mailbox in $mailboxList) {
             $mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
             #data values
             $html += "<tr><td>$($mailbox.Name)</td><td>$($mailbox.UserPrincipalName)</td><td>$($mailboxCreateDate)</td></tr>"
-		
+
             if (!$ListOnly) {
                 Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true
             }
@@ -113,10 +111,10 @@ Function Enable-EOMLitigationHold {
         $html += '</table>'
         $html += '</html>'
         $html | Out-File $outputHTMLFile -Encoding UTF8
-        Write-Host "Report saved in $($outputHTMLFile)"
-	
+        Write-Output "Report saved in $($outputHTMLFile)"
+
         if ($sendEmail -eq $true) {
-            Write-Host 'Sending email..'
+            Write-Output 'Sending email..'
             [string]$html = Get-Content $outputHTMLFile -Raw -Encoding UTF8
             Send-MailMessage -SmtpServer $smtpServer -Port $smtpPort -To $To -From $From -Subject "[$($Organization)] $subject" -Body $html -BodyAsHTML -Credential $Credential -UseSSL -DeliveryNotificationOption OnFailure
         }

@@ -1,13 +1,13 @@
-#tbl 
+#tbl
 {
     font-family:"Tahoma";
     width:auto;
     border-collapse:collapse;
-} 
+}
 #tbl td, #tbl th
-{ 
+{
     font-size:13px;
-    border-bottom: 1px solid #ccc;    
+    border-bottom: 1px solid #ccc;
     padding-top:10px;
     padding-bottom:10px;
     padding-left:10px;
@@ -30,8 +30,8 @@
     text-align:left;
     vertical-align:top;
     color: #7a7a52;
-	
-} 
+
+}
 #tbl th.section
 {
     font-family:"Tahoma";
@@ -47,8 +47,8 @@
     vertical-align:center;
     border: none;
 }
-#tbl td 
-{ 
+#tbl td
+{
     text-align:left;
     vertical-align:top;
     font-weight: lighter;
@@ -56,7 +56,7 @@
     width: fit-content
 }
 #tbl td.wrap
-{ 
+{
     word-break: break-all;
 }
 #legend
