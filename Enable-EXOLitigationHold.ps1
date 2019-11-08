@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#PSScriptInfo
 
-.VERSION 1.0.10
+.VERSION 1.0.0
 
 .GUID 6294d02e-207f-411b-a76e-1485011e98c5
 

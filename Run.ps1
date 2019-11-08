@@ -5,7 +5,7 @@
 
 $params = @{
     Credential = $Credential
-    SendEmail = $false
+    SendEmail = $true
     ListOnly = $true
     ## The FROM address must be an existing Office 365 mailbox.
     ## And you credential must have SendAs permission to use it.
