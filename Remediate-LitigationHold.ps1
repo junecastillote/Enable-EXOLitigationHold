@@ -229,10 +229,8 @@ if ($ListOnly) {
 }
 
 $subject = "Exchange Online Litigation Hold Remediation Report"
-# $fileSuffix = "{0:yyyy_MM_dd}" -f [datetime]$today
 $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
 $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
-$outputTextFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.txt").Replace(" ", "_"))
 Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 ## Get all mailbox with "ExchangeOnlineEnterprise*" plan
 if ($ExclusionList) {
@@ -272,12 +270,16 @@ if ($mailboxList.count -gt 0) {
 
     ## If HTML Table Report
     if ($reportType -eq 'HTML') {
-        $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th></tr>'
+        $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th><th>Litigation Hold Enabled</th><th>Litigation Hold Duration</th><th>Litigation Hold Date</th></tr>'
         foreach ($mailbox in $mailboxList) {
             $mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
             ## data values
-            $html += "<tr><td>$($mailbox.Name)</td><td>$($mailbox.UserPrincipalName)</td><td>$($mailboxCreateDate)</td></tr>"
-
+            $html += "<tr><td>$($mailbox.Name)</td>`
+            <td>$($mailbox.UserPrincipalName)</td>`
+            <td>$($mailboxCreateDate)</td></tr>`
+            <td>$($mailbox.LitigationHoldEnabled)</td></tr>`
+            <td>$($mailbox.LitigationHoldDuration)</td></tr>`
+            <td>$($mailbox.LitigationHoldDate)</td></tr>"
             if (!$ListOnly) {
                 Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true -WarningAction SilentlyContinue
             }
