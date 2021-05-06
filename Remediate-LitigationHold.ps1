@@ -244,7 +244,12 @@ Write-Output "Found $($mailboxList.count) mailbox with disabled litigation hold"
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, LitigationHoldEnabled, LitigationDuration, LitigationHoldDate, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-Csv -NoTypeInformation $outputCsvFile -Force
+    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName,
+    @{n = 'Litigation Hold Enabled'; e = { $_.LitigationHoldEnabled } },
+    @{n = 'Litigation Hold Duration'; e = { $_.LitigationDuration } },
+    @{n = 'Litigation Hold Date'; e = { '{0:dd/MMM/yyyy}' -f $_.LitigationHoldDate } },
+    @{n = 'WhenMailboxCreated'; e = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } |
+    Export-Csv -NoTypeInformation $outputCsvFile -Force
 
     ## create the HTML report
     ## html title
@@ -272,14 +277,14 @@ if ($mailboxList.count -gt 0) {
     if ($reportType -eq 'HTML') {
         $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th><th>Litigation Hold Enabled</th><th>Litigation Hold Duration</th><th>Litigation Hold Date</th></tr>'
         foreach ($mailbox in $mailboxList) {
-            $mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
+            #$mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
             ## data values
             $html += "<tr><td>$($mailbox.Name)</td>`
             <td>$($mailbox.UserPrincipalName)</td>`
-            <td>$($mailboxCreateDate)</td>`
+            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated)</td>`
             <td>$($mailbox.LitigationHoldEnabled)</td>`
             <td>$($mailbox.LitigationHoldDuration)</td>`
-            <td>$($mailbox.LitigationHoldDate)</td></tr>"
+            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.LitigationHoldDate)</td></tr>"
             if (!$ListOnly) {
                 Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true -WarningAction SilentlyContinue
             }
