@@ -258,7 +258,7 @@ if ($mailboxList.count -gt 0) {
         $text += "Report Directory: $((Resolve-Path $ReportDirectory).Path)`n"
         $text += "$($ScriptInfo.Name.ToString()) $($ScriptInfo.Version.ToString())`n"
         $text += "$($ScriptInfo.ProjectURI.ToString())"        
-        $text | Out-File $outputTextFile -Encoding uf8 -Force
+        $text | Out-File $outputTextFile -Encoding utf8 -Force
         $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
         Write-Output "CSV Report saved in $($outputCsvFile)"
     }
