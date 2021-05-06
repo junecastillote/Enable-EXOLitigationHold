@@ -232,6 +232,7 @@ $subject = "Exchange Online Litigation Hold Remediation Report"
 # $fileSuffix = "{0:yyyy_MM_dd}" -f [datetime]$today
 $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
 $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
+$outputTextFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.txt").Replace(" ", "_"))
 Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 ## Get all mailbox with "ExchangeOnlineEnterprise*" plan
 if ($ExclusionList) {
@@ -245,7 +246,7 @@ Write-Output "Found $($mailboxList.count) mailbox with disabled litigation hold"
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
+    
 
     if ($reportType -eq 'CSV') {
         $text = @()
@@ -256,9 +257,12 @@ if ($mailboxList.count -gt 0) {
         $text += "Script Directory: $((Resolve-Path $PSScriptRoot).Path)`n"
         $text += "Report Directory: $((Resolve-Path $ReportDirectory).Path)`n"
         $text += "$($ScriptInfo.Name.ToString()) $($ScriptInfo.Version.ToString())`n"
-        $text += "$($ScriptInfo.ProjectURI.ToString())"    
+        $text += "$($ScriptInfo.ProjectURI.ToString())"        
+        $text | Out-File $outputTextFile -Encoding uf8 -Force
+        $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
+        Write-Output "CSV Report saved in $($outputCsvFile)"
     }
-    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
+    
 
     if ($reportType -eq 'HTML') {
         ## create the HTML report
@@ -305,7 +309,7 @@ if ($mailboxList.count -gt 0) {
     if ($sendEmail -eq $true) {
         Write-Output 'Sending email..'
         if ($reportType -eq 'HTML') { $body = (Get-Content $outputHTMLFile -Raw -Encoding UTF8); $bodyAsHTML = $true }
-        if ($reportType -eq 'CSV') { $body = $text.ToString(); $bodyAsHTML = $false }
+        if ($reportType -eq 'CSV') { $body = (Get-Content $outputTextFile -Raw); $bodyAsHTML = $false }
 
         $mailParams = @{
             SmtpServer                 = $smtpServer
