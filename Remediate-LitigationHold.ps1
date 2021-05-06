@@ -250,7 +250,7 @@ Select-Object @{n = 'Display Name'; e = { $_.DisplayName } },
 @{n = 'Litigation Hold Date'; e = { '{0:yyyy/MM/dd}' -f $_.LitigationHoldDate } },
 @{n = 'Mailbox Created Date'; e = { '{0:yyyy/MM/dd}' -f $_.WhenMailboxCreated } },
 @{n = 'Excluded'; e = {
-        if ($ExclusionList -contains $_.PrimarySMTPAddress) {
+        if ($ExclusionList -contains $_.PrimarySMTPAddress -or $ExclusionList -contains $_.UserPrincipalName) {
             $true
         }
     }
