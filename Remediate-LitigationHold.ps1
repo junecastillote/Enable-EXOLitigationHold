@@ -225,9 +225,9 @@ if ($ListOnly) {
 
 $subject = "Exchange Online Litigation Hold Remediation Report"
 # $fileSuffix = "{0:yyyy_MM_dd}" -f [datetime]$today
-$outputCsvFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_")
-$outputHTMLFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_")
-Write-Output 'Getting mailbox list with E3, E5 or Plan 2 License..'
+$outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
+$outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
+Write-Output 'Getting mailbox list with "ExchangeOnlineEnterprise*" mailbox plan'
 ## Get all mailbox with "ExchangeOnlineEnterprise*" plan
 if ($ExclusionList){
     [array]$mailboxList = Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" -and $ExclusionList -notcontains $_.PrimarySMTPAddress}
