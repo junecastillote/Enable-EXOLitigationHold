@@ -254,7 +254,7 @@ Select-Object @{n = 'Display Name'; e = { $_.DisplayName } },
             $true
         }
     }
-}
+} | Sort-Object 'Display Name'
 
 $excludedCount = (@($mailboxList | Where-Object { $_.Excluded })).Count
 
