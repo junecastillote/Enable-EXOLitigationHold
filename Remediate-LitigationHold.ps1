@@ -246,42 +246,33 @@ Write-Output "Found $($mailboxList.count) mailbox with disabled litigation hold"
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    
+    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, LitigationHoldEnabled, LitigationDuration, LitigationHoldDate, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-Csv -NoTypeInformation $outputCsvFile -Force
 
-    if ($reportType -eq 'CSV') {
-        $text = @()
-        $text += "$Organization"
-        $text += "$today $tz`n"
-        $text += "Please see attached CSV report.`n"
-        $text += "Source: $($env:COMPUTERNAME)"
-        $text += "Script Directory: $((Resolve-Path $PSScriptRoot).Path)"
-        $text += "Report Directory: $((Resolve-Path $ReportDirectory).Path)"
-        $text += "$($ScriptInfo.Name.ToString()) v$($ScriptInfo.Version.ToString())"
-        $text += "$($ScriptInfo.ProjectURI.ToString())"        
-        $text | Out-File $outputTextFile -Encoding utf8 -Force
-        $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, LitigationHoldEnabled, LitigationDuration, LitigationHoldDate, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
-        Write-Output "CSV Report saved in $($outputCsvFile)"
+    ## create the HTML report
+    ## html title
+    $html = "<html><head><title>[$($Organization)] $($subject)</title><meta http-equiv=""Content-Type"" content=""text/html; charset=ISO-8859-1"" />"
+    $html += '<style type="text/css">'
+    $html += $css_string
+    $html += '</style></head><body>'
+
+    ## heading
+    $html += '<table id="tbl">'
+    if ($ListOnly) {
+        $html += '<tr><td class="head">[TEST MODE ONLY]</td></tr>'
     }
-    
+    else {
+        $html += '<tr><td class="head"> </td></tr>'
+    }
+    # $html += '<tr><td class="head"> </td></tr>'
+    $html += '<tr><th class="section">' + $subject + '</th></tr>'
+    $html += '<tr><td class="head"><b>' + $Organization + '</b><br>' + $today + ' ' + $tz + '</td></tr>'
+    $html += '<tr><td class="head"> </td></tr>'
+    $html += '</table>'
+    $html += '<table id="tbl">'
 
+    ## If HTML Table Report
     if ($reportType -eq 'HTML') {
-        ## create the HTML report
-        ## html title
-        $html = "<html><head><title>[$($Organization)] $($subject)</title><meta http-equiv=""Content-Type"" content=""text/html; charset=ISO-8859-1"" />"
-        $html += '<style type="text/css">'
-        $html += $css_string
-        $html += '</style></head><body>'
-
-        ## heading
-        $html += '<table id="tbl">'
-        $html += '<tr><td class="head"> </td></tr>'
-        $html += '<tr><th class="section">' + $subject + '</th></tr>'
-        $html += '<tr><td class="head"><b>' + $Organization + '</b><br>' + $today + ' ' + $tz + '</td></tr>'
-        $html += '<tr><td class="head"> </td></tr>'
-        $html += '</table>'
-        $html += '<table id="tbl">'
         $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th></tr>'
-
         foreach ($mailbox in $mailboxList) {
             $mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
             ## data values
@@ -291,25 +282,30 @@ if ($mailboxList.count -gt 0) {
                 Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true -WarningAction SilentlyContinue
             }
         }
-        $html += '</table>'
-        $html += '<table id="tbl">'
-        $html += '<tr><td class="head"> </td></tr>'
-        $html += '<tr><td class="head"> </td></tr>'
-        $html += '<tr><td class="head">Source: ' + $env:COMPUTERNAME + '<br>'
-        $html += 'Script Directory: ' + (Resolve-Path $PSScriptRoot).Path + '<br>'
-        $html += 'Report Directory: ' + (Resolve-Path $ReportDirectory).Path + '<br>'
-        $html += '<a href="' + $ScriptInfo.ProjectURI.ToString() + '">' + $ScriptInfo.Name.ToString() + ' v' + $ScriptInfo.Version.ToString() + ' </a><br>'
-        $html += '<tr><td class="head"> </td></tr>'
-        $html += '</table>'
-        $html += '</html>'
-        $html | Out-File $outputHTMLFile -Encoding UTF8
-        Write-Output "HTML Report saved in $($outputHTMLFile)"
-    }    
+    }
+
+    ## If CSV File Report
+    if ($reportType -eq 'CSV') {
+        $html += "<tr><td>Please see attached CSV report</td></tr>"
+    }
+
+    $html += '</table>'
+    $html += '<table id="tbl">'
+    $html += '<tr><td class="head"> </td></tr>'
+    $html += '<tr><td class="head"> </td></tr>'
+    $html += '<tr><td class="head">Source: ' + $env:COMPUTERNAME + '<br>'
+    $html += 'Script Directory: ' + (Resolve-Path $PSScriptRoot).Path + '<br>'
+    $html += 'Report Directory: ' + (Resolve-Path $ReportDirectory).Path + '<br>'
+    $html += '<a href="' + $ScriptInfo.ProjectURI.ToString() + '">' + $ScriptInfo.Name.ToString() + ' v' + $ScriptInfo.Version.ToString() + ' </a><br>'
+    $html += '<tr><td class="head"> </td></tr>'
+    $html += '</table>'
+    $html += '</html>'
+    $html | Out-File $outputHTMLFile -Encoding UTF8
+    Write-Output "HTML Report saved in $($outputHTMLFile)"
+
 
     if ($sendEmail -eq $true) {
         Write-Output 'Sending email..'
-        if ($reportType -eq 'HTML') { $body = (Get-Content $outputHTMLFile -Raw -Encoding UTF8); $bodyAsHTML = $true }
-        if ($reportType -eq 'CSV') { $body = (Get-Content $outputTextFile -Raw); $bodyAsHTML = $false }
 
         $mailParams = @{
             SmtpServer                 = $smtpServer
@@ -318,8 +314,8 @@ if ($mailboxList.count -gt 0) {
             From                       = $From
             Subject                    = "[$($Organization)] $subject"
             DeliveryNotificationOption = 'OnFailure'
-            BodyAsHTML                 = $bodyAsHTML
-            Body                       = $body
+            BodyAsHTML                 = $true
+            Body                       = (Get-Content $outputHTMLFile -Raw -Encoding UTF8)
         }
         if ($reportType -eq 'CSV') { $mailParams += @{Attachments = $outputCsvFile } }
         if ($Credential) { $mailParams += @{Credential = $Credential } }
