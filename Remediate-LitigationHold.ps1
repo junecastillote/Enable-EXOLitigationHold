@@ -256,9 +256,11 @@ Select-Object @{n = 'Display Name'; e = { $_.DisplayName } },
     }
 }
 
+$excludedCount = (@($mailboxList | Where-Object { $_.Excluded })).Count
+
 Write-Output "Found $($mailboxList.count) eligible mailbox with disabled litigation hold."
-if (($excludedCount = $mailboxList | Where-Object { $_.Excluded })) {
-    Write-Output "But $($excludedCount.Count) mailbox are in the exclusion list."
+if ($excludedCount -gt 0) {
+    Write-Output "But $excludedCount mailbox are in the exclusion list."
 }
 
 if ($mailboxList.count -gt 0) {
