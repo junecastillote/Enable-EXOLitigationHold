@@ -65,7 +65,7 @@ Param(
 
     ## 1.0.10 - Added $ExclusionList
     [parameter()]
-    [string[]]$ExclusionList,
+    [string[]]$ExclusionList = @(),
 
     [parameter()]
     [string]$ReportDirectory = ($env:TEMP),
@@ -233,23 +233,37 @@ $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remedi
 $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
 Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 ## Get all mailbox with "ExchangeOnlineEnterprise*" plan
-if ($ExclusionList) {
-    $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" -and $ExclusionList -notcontains $_.PrimarySMTPAddress })
-}
-else {
-    $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" })
+# if ($ExclusionList) {
+#     $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" -and $ExclusionList -notcontains $_.PrimarySMTPAddress })
+# }
+# else {
+#     $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" })
+# }
+
+$mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' |
+    Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" }) |
+Select-Object @{n = 'Display Name'; e = { $_.DisplayName } },
+@{n = 'User ID'; e = { $_.UserPrincipalName } },
+@{n = 'Email Address'; e = { $_.PrimarySMTPAddress } },
+@{n = 'Litigation Hold Enabled'; e = { $_.LitigationHoldEnabled } },
+@{n = 'Litigation Hold Duration'; e = { $_.LitigationDuration } },
+@{n = 'Litigation Hold Date'; e = { '{0:yyyy/MM/dd}' -f $_.LitigationHoldDate } },
+@{n = 'Mailbox Created Date'; e = { '{0:yyyy/MM/dd}' -f $_.WhenMailboxCreated } },
+@{n = 'Excluded'; e = {
+        if ($ExclusionList -contains $_.PrimarySMTPAddress) {
+            $true
+        }
+    }
 }
 
-Write-Output "Found $($mailboxList.count) mailbox with disabled litigation hold"
+Write-Output "Found $($mailboxList.count) eligible mailbox with disabled litigation hold."
+if (($excludedCount = $mailboxList | Where-Object { $_.Excluded })) {
+    Write-Output "But $($excludedCount.Count) mailbox are in the exclusion list."
+}
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName,
-    @{n = 'Litigation Hold Enabled'; e = { $_.LitigationHoldEnabled } },
-    @{n = 'Litigation Hold Duration'; e = { $_.LitigationDuration } },
-    @{n = 'Litigation Hold Date'; e = { '{0:dd/MMM/yyyy}' -f $_.LitigationHoldDate } },
-    @{n = 'WhenMailboxCreated'; e = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } |
-    Export-Csv -NoTypeInformation $outputCsvFile -Force
+    $mailboxList | Select-Object 'Display Name', 'Email Address', 'Litigation Hold Enabled', 'Litigation Hold Duration', 'Mailbox Created Date', 'Excluded' | Export-Csv -NoTypeInformation $outputCsvFile -Force
 
     ## create the HTML report
     ## html title
@@ -275,18 +289,18 @@ if ($mailboxList.count -gt 0) {
 
     ## If HTML Table Report
     if ($reportType -eq 'HTML') {
-        $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th><th>Litigation Hold Enabled</th><th>Litigation Hold Duration</th><th>Litigation Hold Date</th></tr>'
+        $html += '<tr><th>Name</th><th>Email Address</th><th>Excluded</th><th>Mailbox Created Date</th><th>Litigation Hold Enabled</th><th>Litigation Hold Duration</th><th>Litigation Hold Date</th></tr>'
         foreach ($mailbox in $mailboxList) {
-            #$mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
             ## data values
-            $html += "<tr><td>$($mailbox.Name)</td>`
-            <td>$($mailbox.UserPrincipalName)</td>`
-            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated)</td>`
-            <td>$($mailbox.LitigationHoldEnabled)</td>`
-            <td>$($mailbox.LitigationHoldDuration)</td>`
-            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.LitigationHoldDate)</td></tr>"
+            $html += "<tr><td>$($mailbox.'Display Name')</td>`
+            <td>$($mailbox.'Email Address')</td>`
+            <td>$($mailbox.Excluded)</td>`
+            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.'Mailbox Created Date')</td>`
+            <td>$($mailbox.'Litigation Hold Enabled')</td>`
+            <td>$($mailbox.'Litigation Hold Duration')</td>`
+            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.'Litigation Hold Date')</td></tr>"
             if (!$ListOnly) {
-                Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true -WarningAction SilentlyContinue
+                Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
             }
         }
     }
