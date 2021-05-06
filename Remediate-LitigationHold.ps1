@@ -256,10 +256,10 @@ if ($mailboxList.count -gt 0) {
     ## heading
     $html += '<table id="tbl">'
     if ($ListOnly) {
-        $html += '<tr><td class="head">[TEST MODE ONLY]</td></tr>'
+        $html += '<tr><td class="head">[REPORT MODE]</td></tr>'
     }
     else {
-        $html += '<tr><td class="head"> </td></tr>'
+        $html += '<tr><td class="head">[REMEDIATION MODE]</td></tr>'
     }
     # $html += '<tr><td class="head"> </td></tr>'
     $html += '<tr><th class="section">' + $subject + '</th></tr>'
@@ -276,9 +276,9 @@ if ($mailboxList.count -gt 0) {
             ## data values
             $html += "<tr><td>$($mailbox.Name)</td>`
             <td>$($mailbox.UserPrincipalName)</td>`
-            <td>$($mailboxCreateDate)</td></tr>`
-            <td>$($mailbox.LitigationHoldEnabled)</td></tr>`
-            <td>$($mailbox.LitigationHoldDuration)</td></tr>`
+            <td>$($mailboxCreateDate)</td>`
+            <td>$($mailbox.LitigationHoldEnabled)</td>`
+            <td>$($mailbox.LitigationHoldDuration)</td>`
             <td>$($mailbox.LitigationHoldDate)</td></tr>"
             if (!$ListOnly) {
                 Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true -WarningAction SilentlyContinue
