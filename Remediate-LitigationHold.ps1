@@ -224,9 +224,9 @@ if ($ListOnly) {
 }
 
 $subject = "Exchange Online Litigation Hold Remediation Report"
-$fileSuffix = "{0:yyyy_MM_dd}" -f [datetime]$today
-$outputCsvFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report-$($fileSuffix).csv").Replace(" ", "_")
-$outputHTMLFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report-$($fileSuffix).html").Replace(" ", "_")
+# $fileSuffix = "{0:yyyy_MM_dd}" -f [datetime]$today
+$outputCsvFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_")
+$outputHTMLFile = ($ReportDirectory + "\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_")
 Write-Output 'Getting mailbox list with E3, E5 or Plan 2 License..'
 ## Get all mailbox with "ExchangeOnlineEnterprise*" plan
 if ($ExclusionList){
