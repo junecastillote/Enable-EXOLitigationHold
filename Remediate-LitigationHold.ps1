@@ -250,13 +250,13 @@ if ($mailboxList.count -gt 0) {
 
     if ($reportType -eq 'CSV') {
         $text = @()
-        $text += "$Organization`n)"
-        $text += "$today $tz`n"
+        $text += "$Organization"
+        $text += "$today $tz`n`n"
         $text += "Please see attached CSV report.`n`n"
         $text += "Source: $($env:COMPUTERNAME)`n"
-        $text += "Script Directory: $((Resolve-Path $PSScriptRoot).Path)`n"
-        $text += "Report Directory: $((Resolve-Path $ReportDirectory).Path)`n"
-        $text += "$($ScriptInfo.Name.ToString()) $($ScriptInfo.Version.ToString())`n"
+        $text += "Script Directory: $((Resolve-Path $PSScriptRoot).Path)"
+        $text += "Report Directory: $((Resolve-Path $ReportDirectory).Path)"
+        $text += "$($ScriptInfo.Name.ToString()) v$($ScriptInfo.Version.ToString())"
         $text += "$($ScriptInfo.ProjectURI.ToString())"        
         $text | Out-File $outputTextFile -Encoding utf8 -Force
         $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
