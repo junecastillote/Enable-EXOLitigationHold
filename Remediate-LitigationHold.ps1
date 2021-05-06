@@ -68,7 +68,12 @@ Param(
     [string[]]$ExclusionList,
 
     [parameter()]
-    [string]$ReportDirectory = ($env:windir + '\temp')
+    [string]$ReportDirectory = ($env:TEMP),
+
+    ## 1.0.11 - Added $reportType. Default = CSV
+    [parameter(Mandatory)]
+    [ValidateSet('HTML', 'CSV')]
+    $reportType = 'CSV'
 )
 
 if ($SendEmail) {
@@ -97,7 +102,7 @@ if (!(Test-Path $ReportDirectory)) {
     $null = New-Item -ItemType Directory -Path $ReportDirectory -Force
 }
 
-"Last Run: $today" | Out-File ($ReportDirectory + "\Remediate-Exchange-Online-Litigation-Hold.txt")
+#"Last Run: $today" | Out-File ($ReportDirectory + "\Remediate-Exchange-Online-Litigation-Hold.txt")
 
 try {
     $OrgInfo = Get-OrganizationConfig -Erroraction stop
@@ -227,65 +232,80 @@ $subject = "Exchange Online Litigation Hold Remediation Report"
 # $fileSuffix = "{0:yyyy_MM_dd}" -f [datetime]$today
 $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
 $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
-Write-Output 'Getting mailbox list with "ExchangeOnlineEnterprise*" mailbox plan'
+Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 ## Get all mailbox with "ExchangeOnlineEnterprise*" plan
-if ($ExclusionList){
-    [array]$mailboxList = Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" -and $ExclusionList -notcontains $_.PrimarySMTPAddress}
+if ($ExclusionList) {
+    $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" -and $ExclusionList -notcontains $_.PrimarySMTPAddress })
 }
 else {
-    [array]$mailboxList = Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*"}
+    $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' | Where-Object { $_.MailboxPlan -like "ExchangeOnlineEnterprise*" })
 }
-
 
 Write-Output "Found $($mailboxList.count) mailbox with disabled litigation hold"
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile
+    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
 
-    ## create the HTML report
-    ## html title
-    $html = "<html><head><title>[$($Organization)] $($subject)</title><meta http-equiv=""Content-Type"" content=""text/html; charset=ISO-8859-1"" />"
-    $html += '<style type="text/css">'
-    $html += $css_string
-    $html += '</style></head><body>'
-
-    ## heading
-    $html += '<table id="tbl">'
-    $html += '<tr><td class="head"> </td></tr>'
-    $html += '<tr><th class="section">' + $subject + '</th></tr>'
-    $html += '<tr><td class="head"><b>' + $Organization + '</b><br>' + $today + ' ' + $tz + '</td></tr>'
-    $html += '<tr><td class="head"> </td></tr>'
-    $html += '</table>'
-    $html += '<table id="tbl">'
-    $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th></tr>'
-
-    foreach ($mailbox in $mailboxList) {
-        $mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
-        ## data values
-        $html += "<tr><td>$($mailbox.Name)</td><td>$($mailbox.UserPrincipalName)</td><td>$($mailboxCreateDate)</td></tr>"
-
-        if (!$ListOnly) {
-            Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true -WarningAction SilentlyContinue
-        }
+    if ($reportType -eq 'CSV') {
+        $text = @()
+        $text += "$Organization`n)"
+        $text += "$today $tz`n"
+        $text += "Please see attached CSV report.`n`n"
+        $text += "Source: $($env:COMPUTERNAME)`n"
+        $text += "Script Directory: $((Resolve-Path $PSScriptRoot).Path)`n"
+        $text += "Report Directory: $((Resolve-Path $ReportDirectory).Path)`n"
+        $text += "$($ScriptInfo.Name.ToString()) $($ScriptInfo.Version.ToString())`n"
+        $text += "$($ScriptInfo.ProjectURI.ToString())"    
     }
-    $html += '</table>'
-    $html += '<table id="tbl">'
-    $html += '<tr><td class="head"> </td></tr>'
-    $html += '<tr><td class="head"> </td></tr>'
-    $html += '<tr><td class="head">Source: ' + $env:COMPUTERNAME + '<br>'
-    $html += 'Script Directory: ' + (Resolve-Path $PSScriptRoot).Path + '<br>'
-    $html += 'Report Directory: ' + (Resolve-Path $ReportDirectory).Path + '<br>'
-    $html += '<a href="' + $ScriptInfo.ProjectURI.ToString() + '">' + $ScriptInfo.Name.ToString() + ' v' + $ScriptInfo.Version.ToString() + ' </a><br>'
-    $html += '<tr><td class="head"> </td></tr>'
-    $html += '</table>'
-    $html += '</html>'
-    $html | Out-File $outputHTMLFile -Encoding UTF8
-    Write-Output "Report saved in $($outputHTMLFile)"
+    $mailboxList | Select-Object Name, UserPrincipalName, SamAccountName, @{Name = 'WhenMailboxCreated'; Expression = { '{0:dd/MMM/yyyy}' -f $_.WhenMailboxCreated } } | Export-CSV -NoTypeInformation $outputCsvFile -Force
+
+    if ($reportType -eq 'HTML') {
+        ## create the HTML report
+        ## html title
+        $html = "<html><head><title>[$($Organization)] $($subject)</title><meta http-equiv=""Content-Type"" content=""text/html; charset=ISO-8859-1"" />"
+        $html += '<style type="text/css">'
+        $html += $css_string
+        $html += '</style></head><body>'
+
+        ## heading
+        $html += '<table id="tbl">'
+        $html += '<tr><td class="head"> </td></tr>'
+        $html += '<tr><th class="section">' + $subject + '</th></tr>'
+        $html += '<tr><td class="head"><b>' + $Organization + '</b><br>' + $today + ' ' + $tz + '</td></tr>'
+        $html += '<tr><td class="head"> </td></tr>'
+        $html += '</table>'
+        $html += '<table id="tbl">'
+        $html += '<tr><th>Name</th><th>UPN</th><th>Mailbox Created Date</th></tr>'
+
+        foreach ($mailbox in $mailboxList) {
+            $mailboxCreateDate = '{0:dd-MMM-yyyy}' -f $mailbox.WhenMailboxCreated
+            ## data values
+            $html += "<tr><td>$($mailbox.Name)</td><td>$($mailbox.UserPrincipalName)</td><td>$($mailboxCreateDate)</td></tr>"
+
+            if (!$ListOnly) {
+                Set-Mailbox -Identity $mailbox.SamAccountName -LitigationHoldEnabled $true -WarningAction SilentlyContinue
+            }
+        }
+        $html += '</table>'
+        $html += '<table id="tbl">'
+        $html += '<tr><td class="head"> </td></tr>'
+        $html += '<tr><td class="head"> </td></tr>'
+        $html += '<tr><td class="head">Source: ' + $env:COMPUTERNAME + '<br>'
+        $html += 'Script Directory: ' + (Resolve-Path $PSScriptRoot).Path + '<br>'
+        $html += 'Report Directory: ' + (Resolve-Path $ReportDirectory).Path + '<br>'
+        $html += '<a href="' + $ScriptInfo.ProjectURI.ToString() + '">' + $ScriptInfo.Name.ToString() + ' v' + $ScriptInfo.Version.ToString() + ' </a><br>'
+        $html += '<tr><td class="head"> </td></tr>'
+        $html += '</table>'
+        $html += '</html>'
+        $html | Out-File $outputHTMLFile -Encoding UTF8
+        Write-Output "HTML Report saved in $($outputHTMLFile)"
+    }    
 
     if ($sendEmail -eq $true) {
         Write-Output 'Sending email..'
-        [string]$html = Get-Content $outputHTMLFile -Raw -Encoding UTF8
+        if ($reportType -eq 'HTML') { $body = (Get-Content $outputHTMLFile -Raw -Encoding UTF8); $bodyAsHTML = $true }
+        if ($reportType -eq 'CSV') { $body = $text.ToString(); $bodyAsHTML = $false }
 
         $mailParams = @{
             SmtpServer                 = $smtpServer
@@ -294,13 +314,14 @@ if ($mailboxList.count -gt 0) {
             From                       = $From
             Subject                    = "[$($Organization)] $subject"
             DeliveryNotificationOption = 'OnFailure'
-            BodyAsHTML                 = $true
-            Body                       = (Get-Content $outputHTMLFile -Raw -Encoding UTF8)
+            BodyAsHTML                 = $bodyAsHTML
+            Body                       = $body
         }
-
+        if ($reportType -eq 'CSV') { $mailParams += @{Attachmments = $outputCsvFile } }
         if ($Credential) { $mailParams += @{Credential = $Credential } }
         if ($UseSSL) { $mailParams += @{UseSSL = $true } }
 
         Send-MailMessage @mailParams
     }
 }
+
