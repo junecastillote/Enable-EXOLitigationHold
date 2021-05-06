@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.10
+.VERSION 1.0.11
 
 .GUID 6294d02e-207f-411b-a76e-1485011e98c5
 
@@ -92,6 +92,10 @@ if ($SendEmail) {
 $ScriptInfo = (Test-ScriptFileInfo -Path $PSScriptRoot\Remediate-LitigationHold.ps1)
 $tz = ([System.TimeZoneInfo]::Local).DisplayName.ToString().Split(" ")[0]
 $today = Get-Date -Format "MMMM dd, yyyy hh:mm tt"
+
+if (!(Test-Path $ReportDirectory)) {
+    $null = New-Item -ItemType Directory -Path $ReportDirectory -Force
+}
 
 "Last Run: $today" | Out-File ($ReportDirectory + "\Remediate-Exchange-Online-Litigation-Hold.txt")
 
