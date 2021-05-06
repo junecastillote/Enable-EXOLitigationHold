@@ -317,7 +317,7 @@ if ($mailboxList.count -gt 0) {
             BodyAsHTML                 = $bodyAsHTML
             Body                       = $body
         }
-        if ($reportType -eq 'CSV') { $mailParams += @{Attachmments = $outputCsvFile } }
+        if ($reportType -eq 'CSV') { $mailParams += @{Attachments = $outputCsvFile } }
         if ($Credential) { $mailParams += @{Credential = $Credential } }
         if ($UseSSL) { $mailParams += @{UseSSL = $true } }
 
