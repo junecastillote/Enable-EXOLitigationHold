@@ -16,9 +16,8 @@ $params = @{
     #Port = 587
     #UseSSL = $true
     ReportDirectory = "$PSScriptRoot\Reports"
-    ## Valid values are: CSV, HTML, ALL
-    #ReportType = 'ALL'
-    #AttachCSVWhenPossible = $true
+    ## Valid values are: CSV, HTML
+    #ReportType = 'HTML'
 }
 
 ## This assumes that the script is in the same working directory.
