@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.1
+.VERSION 1.1.1
 
 .GUID 6294d02e-207f-411b-a76e-1485011e98c5
 
@@ -229,8 +229,12 @@ if ($ListOnly) {
 }
 
 $subject = "Exchange Online Litigation Hold Remediation Report"
-$outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
-$outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
+$outputCsvFile = "$($ReportDirectory)\LitigationHold_Remediation_Report.csv"
+$outputHTMLFile = "$($ReportDirectory)\LitigationHold_Remediation_Report.html"
+$outputExclusionCsvList = "$($ReportDirectory)\Exclusion_List.csv"
+# $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
+# $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
+# $outputExclusionCsvList = ($ReportDirectory) + (("\$($Organization)-Exclusion_List.csv").Replace(" ", "_"))
 Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 
 $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' |
@@ -251,11 +255,12 @@ $excludedCount = (@($mailboxList | Where-Object { $_.Excluded })).Count
 Write-Output "Found $($mailboxList.count) eligible mailbox with disabled litigation hold."
 if ($excludedCount -gt 0) {
     Write-Output "But $excludedCount mailbox are in the exclusion list."
+    $mailboxList | Where-Object { $_.Excluded } | Select-Object 'Display Name', 'Email Address', 'Mailbox Created Date' | Export-Csv $outputExclusionCsvList -NoTypeInformation -Force
 }
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    $mailboxList | Select-Object 'Display Name', 'User ID', 'Email Address', 'Excluded' | Export-Csv -NoTypeInformation $outputCsvFile -Force
+    $mailboxList | Where-Object { !$_.Excluded } | Select-Object 'Display Name', 'Email Address', 'Mailbox Created Date' | Export-Csv -NoTypeInformation $outputCsvFile -Force
 
     ## create the HTML report
     ## html title
@@ -278,24 +283,28 @@ if ($mailboxList.count -gt 0) {
     $html += '</table>'
     $html += '<table id="tbl">'
 
-    ## If HTML Table Report
-    if ($reportType -eq 'HTML') {
-        $html += '<tr><th>Name</th><th>Email Address</th><th>Mailbox Created Date</th><th>Excluded</th></tr>'
-        foreach ($mailbox in $mailboxList) {
-            ## data values
-            $html += "<tr><td>$($mailbox.'Display Name')</td>`
-            <td>$($mailbox.'Email Address')</td>`
-            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.'Mailbox Created Date')</td>`
-            <td>$($mailbox.Excluded)</td></tr>"
-            if (!$ListOnly) {
-                Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
-            }
-        }
-    }
-
     ## If CSV File Report
     if ($reportType -eq 'CSV') {
         $html += "<tr><td>Please see attached CSV report</td></tr>"
+    }
+
+    ## If HTML Table Report
+    if ($reportType -eq 'HTML') {
+        $html += '<tr><th>Name</th><th>Email Address</th><th>Mailbox Created Date</th></tr>'
+    }
+
+    ## Enable Litigation Hold
+    foreach ($mailbox in ($mailboxList | Where-Object { !$_.Excluded })) {
+        Write-Output $($mailbox.'Email Address')
+        if (!$ListOnly) {
+            Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
+        }
+        ## If HTML Table Report
+        if ($reportType -eq 'HTML') {
+            $html += "<tr><td>$($mailbox.'Display Name')</td>`
+            <td>$($mailbox.'Email Address')</td>`
+            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.'Mailbox Created Date')</td>"
+        }
     }
 
     $html += '</table>'
@@ -325,9 +334,17 @@ if ($mailboxList.count -gt 0) {
             BodyAsHTML                 = $true
             Body                       = (Get-Content $outputHTMLFile -Raw -Encoding UTF8)
         }
-        if ($reportType -eq 'CSV') { $mailParams += @{Attachments = $outputCsvFile } }
+
         if ($Credential) { $mailParams += @{Credential = $Credential } }
         if ($UseSSL) { $mailParams += @{UseSSL = $true } }
+
+        $attachment_list = @()
+        if ($reportType -eq 'CSV') { $attachment_list += $outputCsvFile }
+        if ($excludedCount -gt 0) { $attachment_list += $outputExclusionCsvList }
+
+        if ($attachment_list.count -gt 0) {
+            $mailParams += @{Attachments = $attachment_list }
+        }
 
         Send-MailMessage @mailParams
     }
