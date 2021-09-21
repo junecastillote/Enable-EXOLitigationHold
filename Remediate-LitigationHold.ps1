@@ -278,18 +278,20 @@ if ($mailboxList.count -gt 0) {
     $html += '</table>'
     $html += '<table id="tbl">'
 
-    ## If HTML Table Report
-    if ($reportType -eq 'HTML') {
-        $html += '<tr><th>Name</th><th>Email Address</th><th>Mailbox Created Date</th><th>Excluded</th></tr>'
-        foreach ($mailbox in $mailboxList) {
+    ## Enable Litigation Hold
+    foreach ($mailbox in $mailboxList) {
+        if (!$ListOnly -and !($mailbox.Excluded)) {
+            Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
+        }
+
+        ## If HTML Table Report
+        if ($reportType -eq 'HTML') {
+            $html += '<tr><th>Name</th><th>Email Address</th><th>Mailbox Created Date</th><th>Excluded</th></tr>'
             ## data values
             $html += "<tr><td>$($mailbox.'Display Name')</td>`
             <td>$($mailbox.'Email Address')</td>`
             <td>$('{0:dd-MMM-yyyy}' -f $mailbox.'Mailbox Created Date')</td>`
             <td>$($mailbox.Excluded)</td></tr>"
-            if (!$ListOnly) {
-                Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
-            }
         }
     }
 
