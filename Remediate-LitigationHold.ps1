@@ -231,6 +231,7 @@ if ($ListOnly) {
 $subject = "Exchange Online Litigation Hold Remediation Report"
 $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
 $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
+$outputExclusionCsvList = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Exclusion_List.csv").Replace(" ", "_"))
 Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 
 $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' |
@@ -251,6 +252,7 @@ $excludedCount = (@($mailboxList | Where-Object { $_.Excluded })).Count
 Write-Output "Found $($mailboxList.count) eligible mailbox with disabled litigation hold."
 if ($excludedCount -gt 0) {
     Write-Output "But $excludedCount mailbox are in the exclusion list."
+    $mailboxList | Where-Object { $_.Excluded } | Select-Object 'Display Name', 'Email Address' | Export-Csv $outputExclusionCsvList -NoTypeInformation -Force
 }
 
 if ($mailboxList.count -gt 0) {
@@ -327,9 +329,18 @@ if ($mailboxList.count -gt 0) {
             BodyAsHTML                 = $true
             Body                       = (Get-Content $outputHTMLFile -Raw -Encoding UTF8)
         }
-        if ($reportType -eq 'CSV') { $mailParams += @{Attachments = $outputCsvFile } }
+
+        # if ($reportType -eq 'CSV') { $mailParams += @{Attachments = $outputCsvFile } }
         if ($Credential) { $mailParams += @{Credential = $Credential } }
         if ($UseSSL) { $mailParams += @{UseSSL = $true } }
+
+        $attachment_list = @()
+        if ($reportType -eq 'CSV') {$attachment_list += $outputCsvFile }
+        if ($excludedCount -gt 0) {$attachment_list += $outputExclusionCsvList }
+
+        if ($attachment_list.count -gt 0) {
+            $mailParams += @{Attachments = $attachment_list }
+        }
 
         Send-MailMessage @mailParams
     }
