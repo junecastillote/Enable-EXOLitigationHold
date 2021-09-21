@@ -231,7 +231,7 @@ if ($ListOnly) {
 $subject = "Exchange Online Litigation Hold Remediation Report"
 $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
 $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
-$outputExclusionCsvList = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Exclusion_List.csv").Replace(" ", "_"))
+$outputExclusionCsvList = ($ReportDirectory) + (("\Exclusion_List.csv").Replace(" ", "_"))
 Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 
 $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' |
