@@ -225,7 +225,7 @@ $css_string = @'
 '@
 
 if ($ListOnly) {
-    Write-Output "ListOnly is specified. Running on report mode only. No changes will be made."
+    Write-Output "ListOnly is specified. Running on test mode only. No changes will be made."
 }
 
 $subject = "Exchange Online Litigation Hold Remediation Report"
@@ -251,6 +251,7 @@ Select-Object @{n = 'Display Name'; e = { $_.DisplayName } },
 } | Sort-Object 'Display Name'
 
 $excludedCount = (@($mailboxList | Where-Object { $_.Excluded })).Count
+$includedCount = (@($mailboxList | Where-Object { !$_.Excluded })).Count
 
 Write-Output "Found $($mailboxList.count) eligible mailbox with disabled litigation hold."
 if ($excludedCount -gt 0) {
@@ -258,7 +259,7 @@ if ($excludedCount -gt 0) {
     $mailboxList | Where-Object { $_.Excluded } | Select-Object 'Display Name', 'Email Address', 'Mailbox Created Date' | Export-Csv $outputExclusionCsvList -NoTypeInformation -Force
 }
 
-if ($mailboxList.count -gt 0) {
+if ($includedCount -gt 0) {
     Write-Output 'Writing report..'
     $mailboxList | Where-Object { !$_.Excluded } | Select-Object 'Display Name', 'Email Address', 'Mailbox Created Date' | Export-Csv -NoTypeInformation $outputCsvFile -Force
 
@@ -272,7 +273,7 @@ if ($mailboxList.count -gt 0) {
     ## heading
     $html += '<table id="tbl">'
     if ($ListOnly) {
-        $html += '<tr><td class="head">[REPORT MODE]</td></tr>'
+        $html += '<tr><td class="head">[TEST MODE]</td></tr>'
     }
     else {
         $html += '<tr><td class="head"></td></tr>'
