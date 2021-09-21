@@ -257,7 +257,7 @@ if ($excludedCount -gt 0) {
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    $mailboxList | Select-Object 'Display Name', 'User ID', 'Email Address', 'Excluded' | Export-Csv -NoTypeInformation $outputCsvFile -Force
+    $mailboxList | Where-Object { !$_.Excluded } | Select-Object 'Display Name', 'User ID', 'Email Address' | Export-Csv -NoTypeInformation $outputCsvFile -Force
 
     ## create the HTML report
     ## html title
@@ -280,26 +280,27 @@ if ($mailboxList.count -gt 0) {
     $html += '</table>'
     $html += '<table id="tbl">'
 
-    ## Enable Litigation Hold
-    foreach ($mailbox in $mailboxList) {
-        if (!$ListOnly -and !($mailbox.Excluded)) {
-            Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
-        }
-
-        ## If HTML Table Report
-        if ($reportType -eq 'HTML') {
-            $html += '<tr><th>Name</th><th>Email Address</th><th>Mailbox Created Date</th><th>Excluded</th></tr>'
-            ## data values
-            $html += "<tr><td>$($mailbox.'Display Name')</td>`
-            <td>$($mailbox.'Email Address')</td>`
-            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.'Mailbox Created Date')</td>`
-            <td>$($mailbox.Excluded)</td></tr>"
-        }
-    }
-
     ## If CSV File Report
     if ($reportType -eq 'CSV') {
         $html += "<tr><td>Please see attached CSV report</td></tr>"
+    }
+
+    ## If HTML Table Report
+    if ($reportType -eq 'HTML') {
+        $html += '<tr><th>Name</th><th>Email Address</th><th>Mailbox Created Date</th></tr>'
+    }
+
+    ## Enable Litigation Hold
+    foreach ($mailbox in ($mailboxList | Where-Object { !$_.Excluded })) {
+        if (!$ListOnly) {
+            Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
+        }
+        ## If HTML Table Report
+        if ($reportType -eq 'HTML') {
+            $html += "<tr><td>$($mailbox.'Display Name')</td>`
+            <td>$($mailbox.'Email Address')</td>`
+            <td>$('{0:dd-MMM-yyyy}' -f $mailbox.'Mailbox Created Date')</td>"
+        }
     }
 
     $html += '</table>'
@@ -335,8 +336,8 @@ if ($mailboxList.count -gt 0) {
         if ($UseSSL) { $mailParams += @{UseSSL = $true } }
 
         $attachment_list = @()
-        if ($reportType -eq 'CSV') {$attachment_list += $outputCsvFile }
-        if ($excludedCount -gt 0) {$attachment_list += $outputExclusionCsvList }
+        if ($reportType -eq 'CSV') { $attachment_list += $outputCsvFile }
+        if ($excludedCount -gt 0) { $attachment_list += $outputExclusionCsvList }
 
         if ($attachment_list.count -gt 0) {
             $mailParams += @{Attachments = $attachment_list }
