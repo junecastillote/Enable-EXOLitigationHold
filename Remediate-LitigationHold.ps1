@@ -231,7 +231,7 @@ if ($ListOnly) {
 $subject = "Exchange Online Litigation Hold Remediation Report"
 $outputCsvFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.csv").Replace(" ", "_"))
 $outputHTMLFile = ($ReportDirectory) + (("\$($Organization)-LitigationHold_Remediation_Report.html").Replace(" ", "_"))
-$outputExclusionCsvList = ($ReportDirectory) + (("\Exclusion_List.csv").Replace(" ", "_"))
+$outputExclusionCsvList = ($ReportDirectory) + (("\$($Organization)-Exclusion_List.csv").Replace(" ", "_"))
 Write-Output 'Getting mailbox list with Exchange Online Enterprise mailbox plan'
 
 $mailboxList = @(Get-Mailbox -ResultSize Unlimited -Filter 'mailboxplan -ne $null -and litigationholdenabled -eq $false' |
@@ -252,12 +252,12 @@ $excludedCount = (@($mailboxList | Where-Object { $_.Excluded })).Count
 Write-Output "Found $($mailboxList.count) eligible mailbox with disabled litigation hold."
 if ($excludedCount -gt 0) {
     Write-Output "But $excludedCount mailbox are in the exclusion list."
-    $mailboxList | Where-Object { $_.Excluded } | Select-Object 'Display Name', 'Email Address' | Export-Csv $outputExclusionCsvList -NoTypeInformation -Force
+    $mailboxList | Where-Object { $_.Excluded } | Select-Object 'Display Name', 'Email Address', 'Mailbox Created Date' | Export-Csv $outputExclusionCsvList -NoTypeInformation -Force
 }
 
 if ($mailboxList.count -gt 0) {
     Write-Output 'Writing report..'
-    $mailboxList | Where-Object { !$_.Excluded } | Select-Object 'Display Name', 'User ID', 'Email Address' | Export-Csv -NoTypeInformation $outputCsvFile -Force
+    $mailboxList | Where-Object { !$_.Excluded } | Select-Object 'Display Name', 'Email Address', 'Mailbox Created Date' | Export-Csv -NoTypeInformation $outputCsvFile -Force
 
     ## create the HTML report
     ## html title
