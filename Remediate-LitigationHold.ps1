@@ -295,6 +295,7 @@ if ($mailboxList.count -gt 0) {
 
     ## Enable Litigation Hold
     foreach ($mailbox in ($mailboxList | Where-Object { !$_.Excluded })) {
+        Write-Output $($mailbox.'Email Address')
         if (!$ListOnly) {
             Set-Mailbox -Identity $mailbox.'User ID' -LitigationHoldEnabled $true -WarningAction SilentlyContinue
         }
